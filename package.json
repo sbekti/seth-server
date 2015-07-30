@@ -17,6 +17,8 @@
   },
   "homepage": "https://github.com/sbekti/seth-server#readme",
   "dependencies": {
+    "body-parser": "^1.13.2",
+    "express": "^4.13.1",
     "http": "0.0.0",
     "sockjs": "^0.3.15"
   }

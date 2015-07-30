@@ -1,5 +1,16 @@
-var http = require('http');
+var express = require('express');
+var app = express();
+var http = require('http').Server(app);
+var bodyParser = require('body-parser');
 var sockjs = require('sockjs');
+
+app.use(bodyParser.urlencoded({ extended: false }));
+
+app.post('/location', function(req, res) {
+  var data = req.body;
+  console.log(data);
+  res.json(data);
+});
 
 var echo = sockjs.createServer({
   sockjs_url: 'http://cdn.jsdelivr.net/sockjs/1.0.1/sockjs.min.js'
@@ -14,16 +25,10 @@ echo.on('connection', function(conn) {
   conn.on('close', function() {
     console.log('A connection was closed.');
   });
-
-  setInterval(function() {
-    conn.write('Hello?')
-  }, 1000);
 });
 
-var server = http.createServer();
-
-echo.installHandlers(server, {
+echo.installHandlers(http, {
   prefix: '/echo'
 });
 
-server.listen(5000, '0.0.0.0');
+http.listen(5000, '0.0.0.0');
