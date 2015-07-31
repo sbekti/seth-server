@@ -1,0 +1,29 @@
+AT+SAPBR=3,1,"CONTYPE","GPRS"
+AT+SAPBR=3,1,"APN","internet"
+AT+SAPBR=1,1
+AT+HTTPINIT
+AT+HTTPPARA="CID",1
+AT+HTTPPARA="URL","seth.bekti.io/location"
+AT+HTTPACTION=0
+AT+HTTPREAD
+AT+HTTPTERM
+AT+SAPBR=0,1
+
+
+AT+CIPSPRT=1
+AT+CIPSHUT
+AT+CIPSTATUS
+AT+CIPMUX=0
+AT+CSTT="internet","",""
+AT+CIICR
+AT+CIFSR
+AT+CIPSTART="TCP","seth.bekti.io","80"
+AT+CIPSEND
+POST /location HTTP/1.1
+Host: seth.bekti.io
+Cache-Control: no-cache
+Postman-Token: beac0c92-8731-8083-2f7b-2c3589d6ca1d
+Content-Type: application/x-www-form-urlencoded
+
+lat=haha&lng=hehe
+AT+CIPSHUT
