@@ -9,7 +9,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.post('/api/v1/location', function(req, res) {
   var data = req.body;
   console.log(data);
-  res.send(OK);
+  res.send('OK');
 });
 
 var echo = sockjs.createServer({
