@@ -4,7 +4,10 @@ AT+SAPBR=1,1
 AT+SAPBR=2,1
 AT+HTTPINIT
 AT+HTTPPARA="CID",1
-AT+HTTPPARA="URL","seth.bekti.io/api/v1/location"
+AT+HTTPPARA="URL","seth.bekti.io:8000"
+AT+HTTPPARA="UA","bekti-tracker"
+AT+HTTPPARA="CONTENT","application/x-www-form-urlencoded"
+AT+HTTPPARA="TIMEOUT",30
 AT+HTTPDATA=10,10000
 name=sammy
 AT+HTTPACTION=1

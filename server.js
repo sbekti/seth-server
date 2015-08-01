@@ -7,7 +7,7 @@ var sockjs = require('sockjs');
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.post('/api/v1/location', function(req, res) {
-  var data = req;
+  var data = req.body;
   console.log(data);
   res.json(data);
 });
