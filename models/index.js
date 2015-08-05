@@ -1,12 +1,23 @@
 'use strict';
 
-var fs        = require('fs');
-var path      = require('path');
+var fs = require('fs');
+var path = require('path');
 var Sequelize = require('sequelize');
-var env       = process.env.NODE_ENV || 'development';
-var config    = require(__dirname + '/../config/config.json')[env];
-var sequelize = new Sequelize(config.database, config.username, config.password, config);
-var db        = {};
+var env = process.env.NODE_ENV || 'development';
+var sequelize;
+
+if (env == 'production') {
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: 'mariadb'
+  });
+} else {
+  sequelize = new Sequelize(null, null, null, {
+    dialect: 'sqlite',
+    storage: './db.development.sqlite'
+  });
+}
+
+var db = {};
 
 fs
   .readdirSync(__dirname)
