@@ -18,6 +18,31 @@ app.get('/', function(req, res) {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+app.post('/api/v1/user', function(req, res) {
+  if (!req.body.name) {
+    res.status(400).end();
+    return;
+  }
+
+  if (!req.body.username) {
+    res.status(400).end();
+    return;
+  }
+
+  if (!req.body.password) {
+    res.status(400).end();
+    return;
+  }
+
+  models.Device.create({
+    name: req.body.name,
+    username: req.body.username.toLowerCase(),
+    password: req.body.password
+  }).then(function(device) {
+    res.json(device);
+  });
+});
+
 app.post('/api/v1/location', function(req, res) {
   console.log(req.body);
 
@@ -187,7 +212,7 @@ location.on('connection', function(conn) {
 
         conn.write(JSON.stringify(reply));
       });
-    } else if (data.event == 'bounds') {
+    } else if (data.event == 'lowerbound') {
       if (!conn.authenticated) return;
       if (!data.payload.deviceId) return;
 
@@ -203,7 +228,54 @@ location.on('connection', function(conn) {
         ]
       }).then(function(location) {
         var reply = {
-          event: 'bounds',
+          event: 'lowerbound',
+          payload: {
+            status: 'success',
+            location: location
+          }
+        };
+
+        conn.write(JSON.stringify(reply));
+      });
+    } else if (data.event == 'upperbound') {
+      if (!conn.authenticated) return;
+      if (!data.payload.deviceId) return;
+
+      models.Location.findOne({
+        where: {
+          DeviceId: data.payload.deviceId
+        },
+        order: [
+          ['createdAt', 'DESC']
+        ]
+      }).then(function(location) {
+        var reply = {
+          event: 'upperbound',
+          payload: {
+            status: 'success',
+            location: location
+          }
+        };
+
+        conn.write(JSON.stringify(reply));
+      });
+    } else if (data.event == 'lastknown') {
+      if (!conn.authenticated) return;
+      if (!data.payload.deviceId) return;
+
+      models.Location.findOne({
+        where: {
+          DeviceId: data.payload.deviceId,
+          timestamp: {
+            not: null
+          }
+        },
+        order: [
+          ['timestamp', 'DESC']
+        ]
+      }).then(function(location) {
+        var reply = {
+          event: 'lastknown',
           payload: {
             status: 'success',
             location: location
@@ -227,13 +299,5 @@ location.installHandlers(http, {
 });
 
 models.sequelize.sync().then(function() {
-  // models.Device.create({
-  //   name: 'Toyota Vios 2008',
-  //   username: 'sbekti',
-  //   password: 'ayambabi'
-  // }).then(function(device) {
-  //   console.log(device);
-  // });
-
   http.listen(5000, '0.0.0.0');
 });

@@ -3,6 +3,9 @@ var deviceId = null;
 var deviceName = null;
 var markers = [];
 var polyline = null;
+var lastSeen = null;
+
+$('.ui-slider-handle').draggable();
 
 L.mapbox.accessToken = 'pk.eyJ1IjoibWFwYm94IiwiYSI6IlhHVkZmaW8ifQ.hAMX5hSW-QnTeRCMAy9A8Q';
 
@@ -51,7 +54,8 @@ function getCurrentUnixTimestamp() {
 }
 
 function updateLastSeenInfo(location) {
-  $('#device-last-seen').html($.timeago(location.createdAt));
+  lastSeen = location.createdAt;
+  $('#device-last-seen').html($.timeago(lastSeen));
   $('#device-battery').html(location.charge + '%' + ' (' + location.voltage + ' V)');
   $('#device-signal').html(location.signal * 2 - 144 + ' dBm');
 }
@@ -60,15 +64,37 @@ function updateSliderInfo() {
   var minValue = $('#slider-range').slider('values', 0);
   var maxValue = $('#slider-range').slider('values', 1);
 
-  var minCaption = moment.utc(minValue, 'X').format('MMM Do YYYY, hh:mm:ss A');
-  var maxCaption = maxValue == getCurrentUnixTimestamp() ? 'Now' : moment.utc(maxValue, 'X').format('MMM Do YYYY, hh:mm:ss A');
+  var minCaption = moment.utc(minValue, 'X').format('DD/MM/YY hh:mm:ss UTC');
+  var maxCaption = maxValue == getCurrentUnixTimestamp() ? 'Now' : moment.utc(maxValue, 'X').format('DD/MM/YY hh:mm:ss UTC');
 
   $('#slider-info').html(minCaption + ' - ' + maxCaption);
 }
 
-function requestBounds() {
+function requestLowerBound() {
   var data = {
-    event: 'bounds',
+    event: 'lowerbound',
+    payload: {
+      deviceId: deviceId
+    }
+  };
+
+  socket.send(JSON.stringify(data));
+}
+
+function requestUpperBound() {
+  var data = {
+    event: 'upperbound',
+    payload: {
+      deviceId: deviceId
+    }
+  };
+
+  socket.send(JSON.stringify(data));
+}
+
+function requestLastKnownPosition() {
+  var data = {
+    event: 'lastknown',
     payload: {
       deviceId: deviceId
     }
@@ -94,7 +120,7 @@ function requestLocations() {
 }
 
 function createPopup(location) {
-  return '<table class="table-popup"><tbody><tr><td>Lat/Lng</td><td>' + location.latitude + ', ' + location.longitude + '</td></tr><tr><td>Altitude</td><td>' + location.altitude + ' m</td></tr><tr><td>Speed/Course</td><td>' + location.speed + ' km/h / ' + location.course + '&deg;</td></tr><tr><td>Sat/HDOP</td><td>' + location.satellites + ' / ' + location.hdop + '</td></tr><td>Charge</td><td>' + location.charge + '% (' + location.voltage + ' V)</td></tr><tr><td>Signal</td><td>' + (location.signal * 2 - 114) + ' dBm</td></tr></tbody></table>';
+  return '<table class="table-popup"><tbody><tr><td>Fix</td><td>' + moment.utc(moment.utc(location.timestamp).unix(), 'X').format('DD/MM/YY hh:mm:ss UTC') + '</td></tr><tr><td>Lat/Lng</td><td>' + location.latitude + ', ' + location.longitude + '</td></tr><tr><td>Altitude</td><td>' + location.altitude + ' m</td></tr><tr><td>Speed/Course</td><td>' + location.speed + ' km/h / ' + location.course + '&deg;</td></tr><tr><td>Sat/HDOP</td><td>' + location.satellites + ' / ' + location.hdop + '</td></tr><td>Charge</td><td>' + location.charge + '% (' + location.voltage + ' V)</td></tr><tr><td>Signal</td><td>' + (location.signal * 2 - 114) + ' dBm</td></tr></tbody></table>';
 }
 
 $('#slider-range').slider({
@@ -115,6 +141,8 @@ $('#slider-range').slider({
 });
 
 setInterval(function() {
+  if (lastSeen) $('#device-last-seen').html($.timeago(lastSeen));
+
   var currentValue = $('#slider-range').slider('values', 1);
   var currentMax = $('#slider-range').slider('option', 'max');
   var nextMax = getCurrentUnixTimestamp();
@@ -139,7 +167,7 @@ $('#form-login').submit(function(e) {
   var data = {
     event: 'authenticate',
     payload: {
-      username: username,
+      username: username.toLowerCase(),
       password: password
     }
   };
@@ -164,7 +192,8 @@ socket.onmessage = function(e) {
       deviceName = data.payload.deviceName;
       $('#device-name').html(deviceName);
       map.legendControl.addLegend(document.getElementById('legend').innerHTML);
-      requestBounds();
+      requestLowerBound();
+      requestUpperBound();
       $('#modal-login').modal('hide');
     } else {
       $('#alert-login').removeClass('hidden');
@@ -200,11 +229,10 @@ socket.onmessage = function(e) {
     polyline = L.polyline(lines, polylineOptions);
     polyline.addTo(map);
 
-    var lastLocation = locations[locations.length - 1];
-    updateLastSeenInfo(lastLocation);
-
-    map.setView(markers[markers.length - 1].getLatLng(), 14);
-  } else if (data.event == 'bounds') {
+    if (markers.length > 0) {
+      map.setView(markers[markers.length - 1].getLatLng(), 14);
+    }
+  } else if (data.event == 'lowerbound') {
     var location = data.payload.location;
 
     var minValue = moment.utc(location.timestamp).unix();
@@ -212,12 +240,16 @@ socket.onmessage = function(e) {
 
     $('#slider-range').slider('option', 'min', minValue);
     $('#slider-range').slider('option', 'max', maxValue);
-    $('#slider-range').slider('values', 0, minValue);
+    $('#slider-range').slider('values', 0, maxValue - 1);
     $('#slider-range').slider('values', 1, maxValue);
     updateSliderInfo();
 
     $('.slider-container').removeClass('hidden');
     requestLocations();
+  } else if (data.event == 'upperbound') {
+    var location = data.payload.location;
+    updateLastSeenInfo(location);
+    requestLastKnownPosition();
   } else if (data.event == 'update') {
     var location = data.payload.location;
     updateLastSeenInfo(location);
@@ -240,5 +272,14 @@ socket.onmessage = function(e) {
     marker.addTo(map);
     markers.push(marker);
     polyline.addLatLng(marker.getLatLng());
+  } else if (data.event == 'lastknown') {
+    var location = data.payload.location;
+
+    if ((!location.latitude) || (!location.longitude)) {
+      return;
+    }
+
+    $('#slider-range').slider('values', 0, moment.utc(location.timestamp).unix());
+    requestLocations();
   }
 };
