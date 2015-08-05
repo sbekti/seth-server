@@ -2,33 +2,238 @@ var express = require('express');
 var app = express();
 var http = require('http').Server(app);
 var bodyParser = require('body-parser');
+var path = require('path');
 var sockjs = require('sockjs');
+var uuid = require('node-uuid');
+var models = require('./models');
 
-app.use(bodyParser.urlencoded({ extended: false }));
+var connections = {};
+
+app.use(bodyParser.urlencoded({
+  extended: false
+}));
+app.use(express.static('public'));
+
+app.get('/', function(req, res) {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.post('/api/v1/location', function(req, res) {
-  var data = req.body;
-  console.log(data);
+  console.log(req.body);
+
+  var data = {};
+
+  if ((req.body.date) && (req.body.time)) {
+    var day = parseInt(req.body.date.substring(0, 2));
+    var month = parseInt(req.body.date.substring(2, 4)) - 1;
+    var year = parseInt(req.body.date.substring(4, 8));
+
+    var hours = parseInt(req.body.time.substring(0, 2));
+    var minutes = parseInt(req.body.time.substring(2, 4));
+    var seconds = parseInt(req.body.time.substring(4, 6));
+
+    data.timestamp = new Date(Date.UTC(year, month, day, hours, minutes, seconds));
+  }
+
+  if (req.body.id) {
+    data.DeviceId = parseInt(req.body.id);
+  }
+
+  if (req.body.lat) {
+    data.latitude = parseFloat(req.body.lat);
+  }
+
+  if (req.body.lng) {
+    data.longitude = parseFloat(req.body.lng);
+  }
+
+  if (req.body.alt) {
+    data.altitude = parseFloat(req.body.alt);
+  }
+
+  if (req.body.speed) {
+    data.speed = parseFloat(req.body.speed);
+  }
+
+  if (req.body.course) {
+    data.course = parseFloat(req.body.course);
+  }
+
+  if (req.body.sat) {
+    data.satellites = parseInt(req.body.sat);
+  }
+
+  if (req.body.hdop) {
+    data.hdop = req.body.hdop / 100;
+  }
+
+  if (req.body.age) {
+    data.age = parseFloat(req.body.age);
+  }
+
+  if (req.body.charge) {
+    data.charge = parseFloat(req.body.charge);
+  }
+
+  if (req.body.voltage) {
+    data.voltage = parseFloat(req.body.voltage) / 1000;
+  }
+
+  if (req.body.signal) {
+    data.signal = parseFloat(req.body.signal);
+  }
+
+  models.Location.create(data).then(function(location) {
+    var connectionsForDeviceId = connections[data.DeviceId];
+
+    for (var uuid in connectionsForDeviceId) {
+      if (connectionsForDeviceId.hasOwnProperty(uuid)) {
+        var conn = connectionsForDeviceId[uuid];
+
+        var reply = {
+          event: 'update',
+          payload: {
+            location: location
+          }
+        };
+
+        conn.write(JSON.stringify(reply));
+      }
+    }
+  });
+
   res.send('OK');
 });
 
-var echo = sockjs.createServer({
+var location = sockjs.createServer({
   sockjs_url: 'http://cdn.jsdelivr.net/sockjs/1.0.1/sockjs.min.js'
 });
 
-echo.on('connection', function(conn) {
+location.on('connection', function(conn) {
   conn.on('data', function(message) {
-    console.log(message);
-    conn.write(message);
+    var data = JSON.parse(message);
+    if (!data.payload) return;
+
+    if (data.event == 'authenticate') {
+      if (!data.payload.username) return;
+      if (!data.payload.password) return;
+
+      models.Device.findOne({
+        where: {
+          username: data.payload.username,
+          password: data.payload.password
+        }
+      }).then(function(device) {
+        if (device) {
+          conn.authenticated = true;
+          conn.deviceId = device.id;
+          conn.uuid = uuid.v4();
+
+          if (!connections[device.id]) {
+            connections[device.id] = {};
+          }
+
+          connections[conn.deviceId][conn.uuid] = conn;
+          console.log(connections);
+
+          var reply = {
+            event: 'authenticate',
+            payload: {
+              status: 'success',
+              deviceId: device.id,
+              deviceName: device.name
+            }
+          };
+
+          conn.write(JSON.stringify(reply));
+        } else {
+          var reply = {
+            event: 'authenticate',
+            payload: {
+              status: 'error',
+              message: 'Invalid username or password.',
+              deviceId: null,
+              deviceName: null
+            }
+          };
+
+          conn.write(JSON.stringify(reply));
+        }
+      });
+    } else if (data.event == 'location') {
+      if (!conn.authenticated) return;
+      if (!data.payload.deviceId) return;
+      if (!data.payload.start) return;
+      if (!data.payload.end) return;
+
+      models.Location.findAll({
+        where: {
+          DeviceId: data.payload.deviceId,
+          timestamp: {
+            between: [new Date(data.payload.start * 1000), new Date(data.payload.end * 1000)]
+          }
+        },
+        order: [
+          ['timestamp', 'ASC']
+        ]
+      }).then(function(locations) {
+        var reply = {
+          event: 'location',
+          payload: {
+            status: 'success',
+            locations: locations
+          }
+        };
+
+        conn.write(JSON.stringify(reply));
+      });
+    } else if (data.event == 'bounds') {
+      if (!conn.authenticated) return;
+      if (!data.payload.deviceId) return;
+
+      models.Location.findOne({
+        where: {
+          DeviceId: data.payload.deviceId,
+          timestamp: {
+            not: null
+          }
+        },
+        order: [
+          ['timestamp', 'ASC']
+        ]
+      }).then(function(location) {
+        var reply = {
+          event: 'bounds',
+          payload: {
+            status: 'success',
+            location: location
+          }
+        };
+
+        conn.write(JSON.stringify(reply));
+      });
+    }
   });
 
   conn.on('close', function() {
-    console.log('A connection was closed.');
+    if (conn.authenticated) {
+      delete connections[conn.deviceId][conn.uuid];
+    }
   });
 });
 
-echo.installHandlers(http, {
-  prefix: '/echo'
+location.installHandlers(http, {
+  prefix: '/ws'
 });
 
-http.listen(5000, '0.0.0.0');
+models.sequelize.sync().then(function() {
+  // models.Device.create({
+  //   name: 'Toyota Vios 2008',
+  //   username: 'sbekti',
+  //   password: 'ayambabi'
+  // }).then(function(device) {
+  //   console.log(device);
+  // });
+
+  http.listen(5000, '0.0.0.0');
+});

@@ -1,0 +1,73 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+
+  <title>Bekti Tracker</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="description" content="Track anything in real-time.">
+  <meta name="author" content="Samudra Harapan Bekti">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://api.tiles.mapbox.com/mapbox.js/v2.2.1/mapbox.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.css">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!--[if lt IE 9]>
+  <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+  <div class="wrap">
+    <div id="map"></div>
+    <div class="slider-container hidden">
+      <div class="slider-background">
+        <p id="slider-info"></p>
+        <div id="slider-range"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="legend" style="display:none;">
+    <p class="legend-title"><span id="device-name">Updating...</span></p>
+    <p class="legend-text">Last seen: <span id="device-last-seen">updating...</span></p>
+    <p class="legend-text">Battery: <span id="device-battery">updating...</span></p>
+    <p class="legend-text">RSSI: <span id="device-signal">updating...</span></p>
+  </div>
+
+  <div class="modal fade" id="modal-login">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Bekti Tracker</h4>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger hidden" id="alert-login"></div>
+          <form id="form-login">
+            <div class="form-group">
+              <input type="text" id="input-username" class="form-control" placeholder="Username" required autofocus>
+            </div>
+            <div class="form-group">
+              <input type="password" id="input-password" class="form-control" placeholder="Password" required>
+            </div>
+            <input type="submit" class="btn btn-success" id="btn-login" value="Log In">
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/js/bootstrap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.0.3/sockjs.min.js"></script>
+  <script src="https://api.tiles.mapbox.com/mapbox.js/v2.2.1/mapbox.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-timeago/1.4.1/jquery.timeago.min.js"></script>
+  <script src="js/bundle.js"></script>
+</body>
+
+</html>
