@@ -75,8 +75,8 @@ function updateSliderInfo() {
     realTime = false;
   }
 
-  var minCaption = moment.utc(minValue, 'X').format('DD/MM/YY hh:mm:ss UTC');
-  var maxCaption = current ? 'Now' : moment.utc(maxValue, 'X').format('DD/MM/YY hh:mm:ss UTC');
+  var minCaption = moment.utc(minValue, 'X').format('DD/MM/YY HH:mm:ss');
+  var maxCaption = current ? 'Now' : moment.utc(maxValue, 'X').format('DD/MM/YY HH:mm:ss');
 
   $('#slider-info').html(minCaption + ' - ' + maxCaption);
 }
@@ -131,7 +131,7 @@ function requestLocations() {
 }
 
 function createPopup(location) {
-  return '<table class="table-popup"><tbody><tr><td>Fix</td><td>' + moment.utc(moment.utc(location.timestamp).unix(), 'X').format('DD/MM/YY hh:mm:ss UTC') + '</td></tr><tr><td>Lat/Lng</td><td>' + location.latitude + ', ' + location.longitude + '</td></tr><tr><td>Altitude</td><td>' + location.altitude + ' m</td></tr><tr><td>Speed/Course</td><td>' + location.speed + ' km/h / ' + location.course + '&deg;</td></tr><tr><td>Sat/HDOP</td><td>' + location.satellites + ' / ' + location.hdop + '</td></tr><td>Charge</td><td>' + location.charge + '% (' + location.voltage + ' V)</td></tr><tr><td>Signal</td><td>' + (location.signal * 2 - 114) + ' dBm</td></tr></tbody></table>';
+  return '<table class="table-popup"><tbody><tr><td>Fix</td><td>' + moment.utc(moment.utc(location.timestamp).unix(), 'X').format('DD/MM/YY HH:mm:ss UTC') + '</td></tr><tr><td>Lat/Lng</td><td>' + location.latitude + ', ' + location.longitude + '</td></tr><tr><td>Altitude</td><td>' + location.altitude + ' m</td></tr><tr><td>Speed/Course</td><td>' + location.speed + ' km/h / ' + location.course + '&deg;</td></tr><tr><td>Sat/HDOP</td><td>' + location.satellites + ' / ' + location.hdop + '</td></tr><td>Charge</td><td>' + location.charge + '% (' + location.voltage + ' V)</td></tr><tr><td>Signal</td><td>' + (location.signal * 2 - 114) + ' dBm</td></tr></tbody></table>';
 }
 
 $('#slider-range').slider({
@@ -264,17 +264,19 @@ var connect = function() {
     } else if (data.event == 'lowerbound') {
       var location = data.payload.location;
 
-      var minValue = moment.utc(location.timestamp).unix();
+      var minValue = getCurrentUnixTimestamp() - (24 * 3600);
+      //var minValue = moment.utc(location.timestamp).unix();
       var maxValue = getCurrentUnixTimestamp();
 
+      //$('#slider-range').slider('option', 'min', minValue);
       $('#slider-range').slider('option', 'min', minValue);
       $('#slider-range').slider('option', 'max', maxValue);
-      $('#slider-range').slider('values', 0, maxValue - 1);
+      $('#slider-range').slider('values', 0, minValue);
       $('#slider-range').slider('values', 1, maxValue);
       updateSliderInfo();
 
       $('.slider-container').removeClass('hidden');
-      requestLocations();
+      //requestLocations();
     } else if (data.event == 'upperbound') {
       var location = data.payload.location;
       updateLastSeenInfo(location);
