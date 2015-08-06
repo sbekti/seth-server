@@ -6,7 +6,7 @@ module.exports = function(sequelize, DataTypes) {
     longitude: DataTypes.FLOAT(4, 6),
     timestamp: DataTypes.DATE,
     speed: DataTypes.FLOAT(4, 2),
-    course: DataTypes.INTEGER,
+    course: DataTypes.FLOAT(4, 2),
     altitude: DataTypes.FLOAT(4, 2),
     satellites: DataTypes.INTEGER,
     hdop: DataTypes.FLOAT(4, 2),
