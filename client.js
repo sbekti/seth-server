@@ -4,6 +4,7 @@ var deviceName = null;
 var markers = [];
 var polyline = null;
 var lastSeen = null;
+var realTime = false;
 
 $('.ui-slider-handle').draggable();
 
@@ -64,10 +65,19 @@ function updateSliderInfo() {
   var minValue = $('#slider-range').slider('values', 0);
   var maxValue = $('#slider-range').slider('values', 1);
 
+  var current = maxValue == getCurrentUnixTimestamp();
+  if (current) {
+    realTime = true;
+  } else {
+    realTime = false;
+  }
+
   var minCaption = moment.utc(minValue, 'X').format('DD/MM/YY hh:mm:ss UTC');
-  var maxCaption = maxValue == getCurrentUnixTimestamp() ? 'Now' : moment.utc(maxValue, 'X').format('DD/MM/YY hh:mm:ss UTC');
+  var maxCaption = current ? 'Now' : moment.utc(maxValue, 'X').format('DD/MM/YY hh:mm:ss UTC');
 
   $('#slider-info').html(minCaption + ' - ' + maxCaption);
+
+  console.log('realTime: ' + realTime);
 }
 
 function requestLowerBound() {
@@ -258,8 +268,7 @@ socket.onmessage = function(e) {
       return;
     }
 
-    var maxValue = $('#slider-range').slider('values', 1);
-    if (maxValue != getCurrentUnixTimestamp()) return;
+    if (!realTime) return;
 
     var lastMarker = markers[markers.length - 1];
     lastMarker.setIcon(customIcon);
