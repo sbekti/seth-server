@@ -76,8 +76,6 @@ function updateSliderInfo() {
   var maxCaption = current ? 'Now' : moment.utc(maxValue, 'X').format('DD/MM/YY hh:mm:ss UTC');
 
   $('#slider-info').html(minCaption + ' - ' + maxCaption);
-
-  console.log('realTime: ' + realTime);
 }
 
 function requestLowerBound() {
