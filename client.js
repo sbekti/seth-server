@@ -1,10 +1,13 @@
-var socket = new SockJS('/ws');
+var socket = null;
 var deviceId = null;
 var deviceName = null;
 var markers = [];
 var polyline = null;
 var lastSeen = null;
 var realTime = false;
+var reconnectTimer = null;
+var credentials = null;
+var reconnect = false;
 
 $('.ui-slider-handle').draggable();
 
@@ -172,121 +175,151 @@ $('#form-login').submit(function(e) {
   if (!username) return;
   if (!password) return;
 
+  credentials = {
+    username: username.toLowerCase(),
+    password: password
+  };
+
   var data = {
     event: 'authenticate',
-    payload: {
-      username: username.toLowerCase(),
-      password: password
-    }
+    payload: credentials
   };
 
   socket.send(JSON.stringify(data));
 });
 
-socket.onopen = function() {
-  $('#modal-login').modal({
-    backdrop: 'static',
-    keyboard: false
-  });
-};
+var connect = function() {
+  socket = new SockJS('/ws');
 
-socket.onmessage = function(e) {
-  var data = JSON.parse(e.data);
-  console.log(data);
+  clearInterval(reconnectTimer);
 
-  if (data.event == 'authenticate') {
-    if ((data.payload.status == 'success') && (data.payload.deviceId)) {
-      deviceId = data.payload.deviceId;
-      deviceName = data.payload.deviceName;
-      $('#device-name').html(deviceName);
-      map.legendControl.addLegend(document.getElementById('legend').innerHTML);
-      requestLowerBound();
-      requestUpperBound();
-      $('#modal-login').modal('hide');
+  socket.onopen = function() {
+    if (!credentials) {
+      $('#modal-login').modal({
+        backdrop: 'static',
+        keyboard: false
+      });
     } else {
-      $('#alert-login').removeClass('hidden');
-      $('#alert-login').html(data.payload.message);
+      var data = {
+        event: 'authenticate',
+        payload: credentials
+      };
+
+      socket.send(JSON.stringify(data));
     }
-  } else if (data.event == 'location') {
-    var locations = data.payload.locations;
+  }
 
-    for (var i = 0; i < markers.length; ++i) {
-      var marker = markers[i];
-      map.removeLayer(marker);
-    }
+  socket.onmessage = function(e) {
+    var data = JSON.parse(e.data);
+    console.log(data);
 
-    if (polyline) map.removeLayer(polyline);
-    markers = [];
-    var lines = [];
+    if (data.event == 'authenticate') {
+      if (reconnect) return;
 
-    for (var i = 0; i < locations.length; ++i) {
-      var location = locations[i];
+      if ((data.payload.status == 'success') && (data.payload.deviceId)) {
+        deviceId = data.payload.deviceId;
+        deviceName = data.payload.deviceName;
+        $('#device-name').html(deviceName);
+        map.legendControl.addLegend(document.getElementById('legend').innerHTML);
+        requestLowerBound();
+        requestUpperBound();
+        $('#modal-login').modal('hide');
+      } else {
+        $('#alert-login').removeClass('hidden');
+        $('#alert-login').html(data.payload.message);
+      }
+    } else if (data.event == 'location') {
+      var locations = data.payload.locations;
 
-      if ((!location.latitude) || (!location.longitude)) continue;
+      for (var i = 0; i < markers.length; ++i) {
+        var marker = markers[i];
+        map.removeLayer(marker);
+      }
+
+      if (polyline) map.removeLayer(polyline);
+      markers = [];
+      var lines = [];
+
+      for (var i = 0; i < locations.length; ++i) {
+        var location = locations[i];
+
+        if ((!location.latitude) || (!location.longitude)) continue;
+
+        var marker = L.marker([location.latitude, location.longitude], {
+          icon: i == locations.length - 1 ? mainIcon : customIcon
+        });
+
+        marker.bindPopup(createPopup(location));
+        marker.addTo(map);
+        markers.push(marker);
+        lines.push(marker.getLatLng());
+      }
+
+      polyline = L.polyline(lines, polylineOptions);
+      polyline.addTo(map);
+
+      if (markers.length > 0) {
+        map.setView(markers[markers.length - 1].getLatLng(), 16);
+      }
+    } else if (data.event == 'lowerbound') {
+      var location = data.payload.location;
+
+      var minValue = moment.utc(location.timestamp).unix();
+      var maxValue = getCurrentUnixTimestamp();
+
+      $('#slider-range').slider('option', 'min', minValue);
+      $('#slider-range').slider('option', 'max', maxValue);
+      $('#slider-range').slider('values', 0, maxValue - 1);
+      $('#slider-range').slider('values', 1, maxValue);
+      updateSliderInfo();
+
+      $('.slider-container').removeClass('hidden');
+      requestLocations();
+    } else if (data.event == 'upperbound') {
+      var location = data.payload.location;
+      updateLastSeenInfo(location);
+      requestLastKnownPosition();
+    } else if (data.event == 'update') {
+      var location = data.payload.location;
+      updateLastSeenInfo(location);
+
+      if ((!location.latitude) || (!location.longitude)) {
+        return;
+      }
+
+      if (!realTime) return;
+
+      var lastMarker = markers[markers.length - 1];
+      lastMarker.setIcon(customIcon);
 
       var marker = L.marker([location.latitude, location.longitude], {
-        icon: i == locations.length - 1 ? mainIcon : customIcon
+        icon: mainIcon
       });
 
       marker.bindPopup(createPopup(location));
       marker.addTo(map);
       markers.push(marker);
-      lines.push(marker.getLatLng());
+      polyline.addLatLng(marker.getLatLng());
+    } else if (data.event == 'lastknown') {
+      var location = data.payload.location;
+
+      if ((!location.latitude) || (!location.longitude)) {
+        return;
+      }
+
+      $('#slider-range').slider('values', 0, moment.utc(location.timestamp).unix());
+      requestLocations();
     }
-
-    polyline = L.polyline(lines, polylineOptions);
-    polyline.addTo(map);
-
-    if (markers.length > 0) {
-      map.setView(markers[markers.length - 1].getLatLng(), 16);
-    }
-  } else if (data.event == 'lowerbound') {
-    var location = data.payload.location;
-
-    var minValue = moment.utc(location.timestamp).unix();
-    var maxValue = getCurrentUnixTimestamp();
-
-    $('#slider-range').slider('option', 'min', minValue);
-    $('#slider-range').slider('option', 'max', maxValue);
-    $('#slider-range').slider('values', 0, maxValue - 1);
-    $('#slider-range').slider('values', 1, maxValue);
-    updateSliderInfo();
-
-    $('.slider-container').removeClass('hidden');
-    requestLocations();
-  } else if (data.event == 'upperbound') {
-    var location = data.payload.location;
-    updateLastSeenInfo(location);
-    requestLastKnownPosition();
-  } else if (data.event == 'update') {
-    var location = data.payload.location;
-    updateLastSeenInfo(location);
-
-    if ((!location.latitude) || (!location.longitude)) {
-      return;
-    }
-
-    if (!realTime) return;
-
-    var lastMarker = markers[markers.length - 1];
-    lastMarker.setIcon(customIcon);
-
-    var marker = L.marker([location.latitude, location.longitude], {
-      icon: mainIcon
-    });
-
-    marker.bindPopup(createPopup(location));
-    marker.addTo(map);
-    markers.push(marker);
-    polyline.addLatLng(marker.getLatLng());
-  } else if (data.event == 'lastknown') {
-    var location = data.payload.location;
-
-    if ((!location.latitude) || (!location.longitude)) {
-      return;
-    }
-
-    $('#slider-range').slider('values', 0, moment.utc(location.timestamp).unix());
-    requestLocations();
   }
-};
+
+  socket.onclose = function() {
+    socket = null;
+    reconnect = true;
+
+    reconnectTimer = setInterval(function() {
+      connect();
+    }, 2000);
+  }
+}
+
+connect();

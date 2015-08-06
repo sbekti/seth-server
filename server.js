@@ -44,8 +44,6 @@ app.post('/api/v1/user', function(req, res) {
 });
 
 app.post('/api/v1/location', function(req, res) {
-  console.log(req.body);
-
   var data = {};
 
   if ((req.body.date) && (req.body.time)) {
@@ -159,8 +157,7 @@ location.on('connection', function(conn) {
           }
 
           connections[conn.deviceId][conn.uuid] = conn;
-          console.log(connections);
-
+          
           var reply = {
             event: 'authenticate',
             payload: {
