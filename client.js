@@ -130,7 +130,7 @@ $('#slider-range').slider({
   values: [75, Date.now() / 1000],
   slide: function(event, ui) {
     updateSliderInfo();
-    requestLocations();
+    //requestLocations();
   },
   create: function(event, ui) {
     updateSliderInfo();
