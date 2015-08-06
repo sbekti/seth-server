@@ -9,8 +9,8 @@ gulp.task('browserify', function() {
   return browserify('./client.js')
     .bundle()
     .pipe(source('bundle.js'))
-    // .pipe(buffer())
-    // .pipe(uglify())
+    .pipe(buffer())
+    .pipe(uglify())
     .pipe(gulp.dest('public/js'));
 });
 
