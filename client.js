@@ -240,7 +240,7 @@ socket.onmessage = function(e) {
     polyline.addTo(map);
 
     if (markers.length > 0) {
-      map.setView(markers[markers.length - 1].getLatLng(), 14);
+      map.setView(markers[markers.length - 1].getLatLng(), 16);
     }
   } else if (data.event == 'lowerbound') {
     var location = data.payload.location;
