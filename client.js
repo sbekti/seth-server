@@ -271,7 +271,7 @@ var connect = function() {
       //$('#slider-range').slider('option', 'min', minValue);
       $('#slider-range').slider('option', 'min', minValue);
       $('#slider-range').slider('option', 'max', maxValue);
-      $('#slider-range').slider('values', 0, minValue);
+      $('#slider-range').slider('values', 0, maxValue - 1);
       $('#slider-range').slider('values', 1, maxValue);
       updateSliderInfo();
 
