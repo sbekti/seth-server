@@ -4,19 +4,10 @@ var fs = require('fs');
 var path = require('path');
 var Sequelize = require('sequelize');
 var env = process.env.NODE_ENV || 'development';
-var sequelize;
-
-if (env == 'production') {
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
-    dialect: 'mariadb'
-  });
-} else {
-  sequelize = new Sequelize(null, null, null, {
-    dialect: 'sqlite',
-    storage: './db.development.sqlite'
-  });
-}
-
+var sequelize = new Sequelize(null, null, null, {
+  dialect: 'sqlite',
+  storage: './data/db.sqlite'
+});
 var db = {};
 
 fs
