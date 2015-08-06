@@ -58,7 +58,7 @@ function updateLastSeenInfo(location) {
   lastSeen = location.createdAt;
   $('#device-last-seen').html($.timeago(lastSeen));
   $('#device-battery').html(location.charge + '%' + ' (' + location.voltage + ' V)');
-  $('#device-signal').html(location.signal * 2 - 144 + ' dBm');
+  $('#device-signal').html(location.signal * 2 - 114 + ' dBm');
 }
 
 function updateSliderInfo() {
