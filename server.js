@@ -62,6 +62,10 @@ app.post('/api/v1/location', function(req, res) {
     data.DeviceId = parseInt(req.body.id);
   }
 
+  if (req.body.fix) {
+    data.fix = parseInt(req.body.fix);
+  }
+
   if (req.body.lat) {
     data.latitude = parseFloat(req.body.lat);
   }
@@ -157,7 +161,7 @@ location.on('connection', function(conn) {
           }
 
           connections[conn.deviceId][conn.uuid] = conn;
-          
+
           var reply = {
             event: 'authenticate',
             payload: {

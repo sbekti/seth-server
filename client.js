@@ -131,7 +131,7 @@ function requestLocations() {
 }
 
 function createPopup(location) {
-  return '<table class="table-popup"><tbody><tr><td>Fix</td><td>' + moment.utc(moment.utc(location.timestamp).unix(), 'X').format('DD/MM/YY HH:mm:ss UTC') + '</td></tr><tr><td>Lat/Lng</td><td>' + location.latitude + ', ' + location.longitude + '</td></tr><tr><td>Altitude</td><td>' + location.altitude + ' m</td></tr><tr><td>Speed/Course</td><td>' + location.speed + ' km/h / ' + location.course + '&deg;</td></tr><tr><td>Sat/HDOP</td><td>' + location.satellites + ' / ' + location.hdop + '</td></tr><td>Charge</td><td>' + location.charge + '% (' + location.voltage + ' V)</td></tr><tr><td>Signal</td><td>' + (location.signal * 2 - 114) + ' dBm</td></tr></tbody></table>';
+  return '<table class="table-popup"><tbody><tr><td>Fix</td><td>' + location.fix + 'D ' + moment.utc(moment.utc(location.timestamp).unix(), 'X').format('DD/MM/YY HH:mm:ss UTC') + '</td></tr><tr><td>Lat/Lng</td><td>' + location.latitude + ', ' + location.longitude + '</td></tr><tr><td>Altitude</td><td>' + location.altitude + ' m</td></tr><tr><td>Speed/Course</td><td>' + location.speed + ' km/h / ' + location.course + '&deg;</td></tr><tr><td>Sat/HDOP</td><td>' + location.satellites + ' / ' + location.hdop + '</td></tr><td>Charge</td><td>' + location.charge + '% (' + location.voltage + ' V)</td></tr><tr><td>Signal</td><td>' + (location.signal * 2 - 114) + ' dBm</td></tr></tbody></table>';
 }
 
 $('#slider-range').slider({
